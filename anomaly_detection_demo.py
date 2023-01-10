@@ -136,6 +136,26 @@ def mlp_predict_outliers(in_x, predict_x, w, std_dev=2):
 
     return predict
 
+class MLPEstimator():
+
+    def __init__(self):
+
+        self.w_fit = [npr.randn(2,32), npr.randn(32,2)]
+
+    def fit(self, train_y, epochs=1000, batch_size=None):
+
+        if batch_size is None:
+            batch_size = train_y.shape[0]
+
+        self.w_fit = train_mlp(train_y, train_y, self.w_fit, \
+                epochs=1000, batch_size=batch_size)
+
+        self.train_y = train_y
+
+    def predict(self, my_data, sd=5):
+
+        return mlp_predict_outliers(self.train_y, my_data, self.w_fit, std_dev=sd)
+
 
 if __name__ == "__main__":
 
@@ -159,18 +179,22 @@ if __name__ == "__main__":
         estimator_0 = sklearn.covariance.EllipticEnvelope()
         estimator_1 = sklearn.ensemble.IsolationForest()
         estimator_2 = sklearn.svm.OneClassSVM()
+        estimator_3 = MLPEstimator()
 
         estimator_0.fit(train_y)
         estimator_1.fit(train_y)
         estimator_2.fit(train_y)
+        estimator_3.fit(train_y)
 
         in_predict_0 = estimator_0.predict(val_y)
         in_predict_1 = estimator_1.predict(val_y)
         in_predict_2 = estimator_2.predict(val_y)
+        in_predict_3 = estimator_3.predict(val_y)
 
         out_predict_0 = estimator_0.predict(outliers)
         out_predict_1 = estimator_1.predict(outliers)
         out_predict_2 = estimator_2.predict(outliers)
+        out_predict_3 = estimator_3.predict(outliers)
 
         print(seed)
 
@@ -180,7 +204,7 @@ if __name__ == "__main__":
         accuracy = correct / (val_y.shape[0] + outliers.shape[0])
         plt.xlabel(f"accuracy: {accuracy:.3f}", fontsize=16)
         plt.legend()
-        plt.savefig(f"../assets/acc_{int(100*accuracy)}_seed{seed}sk_covariance_.png")
+        plt.savefig(f"./assets/acc_{int(100*accuracy)}_seed{seed}sk_covariance_.png")
 
         fig1 = make_anomaly_fig(val_y, outliers, in_predict_1, out_predict_1)
         plt.title("IsolationForest", fontsize=32)
@@ -188,7 +212,7 @@ if __name__ == "__main__":
         accuracy = correct / (val_y.shape[0] + outliers.shape[0])
         plt.xlabel(f"accuracy: {accuracy:.3f}", fontsize=16)
         plt.legend()
-        plt.savefig(f"../assets/acc_{int(100*accuracy)}_seed{seed}sk_isolation_forest_.png")
+        plt.savefig(f"./assets/acc_{int(100*accuracy)}_seed{seed}sk_isolation_forest_.png")
 
         fig2 = make_anomaly_fig(val_y, outliers, in_predict_2, out_predict_2)
         plt.title("OneClassSVM", fontsize=32)
@@ -196,33 +220,13 @@ if __name__ == "__main__":
         accuracy = correct / (val_y.shape[0] + outliers.shape[0])
         plt.xlabel(f"accuracy: {accuracy:.3f}", fontsize=16)
         plt.legend()
-        plt.savefig(f"../assets/acc_{int(100*accuracy)}_seed{seed}sk_svm_.png")
+        plt.savefig(f"./assets/acc_{int(100*accuracy)}_seed{seed}sk_svm_.png")
 
-        w_fit = [npr.randn(2,32), npr.randn(32,2)]
 
-        w_fit = train_mlp(train_y, train_y, w_fit, epochs=1000, batch_size=train_y.shape[0])
-        mlp_fitted = make_mlp_function(w_fit) 
-        mlp_fitted_loss_fn = make_mlp_loss_function()
-
-        train_loss = mlp_fitted_loss_fn(train_y, train_y, w_fit)
-        val_loss = mlp_fitted_loss_fn(val_y, val_y, w_fit)
-        out_loss = mlp_fitted_loss_fn(outliers, outliers, w_fit)
-
-        print(f"training loss {train_loss:.3e}")
-        print(f"val loss {train_loss:.3e}")
-        print(f"outlier loss {train_loss:.3e}")
-
-        for sd in [.1, 1, 2, 3, 5, 7, 11]:
-            predict_val = mlp_predict_outliers(train_y, val_y, w_fit, std_dev=sd)
-            predict_out = mlp_predict_outliers(train_y, outliers, w_fit, std_dev=sd)
-
-            fig3 = make_anomaly_fig(val_y, outliers, predict_val, predict_out)
-            plt.title(f"Autoencoder Loss > {sd} $\sigma$", fontsize=32)
-            correct = np.sum(predict_val > 0.0) + np.sum(predict_out < 0.0)
-            accuracy = correct / (val_y.shape[0] + outliers.shape[0])
-            plt.xlabel(f"accuracy: {accuracy:.3f}", fontsize=16)
-            plt.legend()
-            plt.savefig(f"../assets/acc_{int(100*accuracy)}_seed{seed}sk_mlp__sd{sd}.png")
-
-    
-
+        fig3 = make_anomaly_fig(val_y, outliers, in_predict_3, out_predict_3)
+        plt.title(f"Autoencoder Loss > 5 $\sigma$", fontsize=32)
+        correct = np.sum(in_predict_3 > 0.0) + np.sum(out_predict_3 < 0.0)
+        accuracy = correct / (train_y.shape[0] + outliers.shape[0])
+        plt.xlabel(f"accuracy: {accuracy:.3f}", fontsize=16)
+        plt.legend()
+        plt.savefig(f"./assets/acc_{int(100*accuracy)}_seed{seed}_mlp.png")
